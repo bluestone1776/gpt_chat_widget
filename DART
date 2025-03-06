@@ -1,0 +1,55 @@
+// lib/widgets/auth_gate.dart
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+class AuthGate extends StatelessWidget {
+  final Widget authenticatedScreen;
+  final Widget unauthenticatedScreen;
+
+  const AuthGate({
+    Key? key,
+    required this.authenticatedScreen,
+    required this.unauthenticatedScreen,
+  }) : super(key: key);
+
+  // Load environment variables from the .env file
+  Future<void> _loadEnv() async {
+    if (!dotenv.isInitialized) {
+      await dotenv.load(fileName: ".env");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _loadEnv(),
+      builder: (context, envSnapshot) {
+        if (envSnapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (envSnapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error loading environment: ${envSnapshot.error}',
+              style: const TextStyle(color: Colors.red),
+            ),
+          );
+        }
+        // Once the environment is loaded, proceed with Firebase authentication check.
+        return StreamBuilder<User?>(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, authSnapshot) {
+            if (authSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (authSnapshot.hasData) {
+              return authenticatedScreen;
+            } else {
+              return unauthenticatedScreen;
+            }
+          },
+        );
+      },
+    );
+  }
+}
